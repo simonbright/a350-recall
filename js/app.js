@@ -1,6 +1,6 @@
 import { GROUPS, ITEMS, ITEM_BY_ID } from "./items.js";
 
-export const APP_VERSION = "1.4.0";
+export const APP_VERSION = "1.4.1";
 
 const TRAINING_PDF_VIEW = "./pdf.html";
 
