@@ -1,4 +1,4 @@
-const CACHE = "a350-recall-v1.2.0";
+const CACHE = "a350-recall-v1.3.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,11 @@ const ASSETS = [
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
   "./icons/a350-corner.jpg",
+  "./pdf.html",
+  "./docs/pages/1.jpg",
+  "./docs/pages/2.jpg",
+  "./docs/pages/3.jpg",
+  "./docs/pages/4.jpg",
 ];
 
 self.addEventListener("install", (event) => {

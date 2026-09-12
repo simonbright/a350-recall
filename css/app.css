@@ -334,7 +334,9 @@ textarea {
 
 .toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
@@ -346,6 +348,14 @@ textarea {
   border-radius: 12px;
   font-size: 16px;
   font-weight: 650;
+}
+
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .btn.compact {

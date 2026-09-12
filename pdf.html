@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#eef4fa" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>DAL/2442 Training Aid</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #eef4fa;
+        color: #1b2833;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI", system-ui, sans-serif;
+      }
+      .bar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: calc(48px + env(safe-area-inset-top, 0px));
+        padding: env(safe-area-inset-top, 0px) 12px 10px;
+        background: #fff;
+        border-bottom: 1px solid #cfdbe6;
+      }
+      .bar strong {
+        flex: 1;
+        font-size: 15px;
+      }
+      .bar a {
+        color: #1d6fb8;
+        font-size: 15px;
+        font-weight: 650;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .pages {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+      }
+      figure {
+        margin: 0;
+        background: #fff;
+        border: 1px solid #cfdbe6;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      figcaption {
+        padding: 10px 12px 0;
+        color: #5a6d7c;
+        font-size: 13px;
+        font-weight: 650;
+      }
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <a href="./">Back</a>
+      <strong>DAL/2442 training aid</strong>
+      <a href="./docs/delta_memoryitems.pdf">Open PDF</a>
+    </div>
+    <div class="pages">
+      <figure>
+        <figcaption>Page 1 of 4 · FCOM limitations</figcaption>
+        <img src="./docs/pages/1.jpg" alt="DAL/2442 page 1, FCOM limitations" />
+      </figure>
+      <figure>
+        <figcaption>Page 2 of 4 · Memory items</figcaption>
+        <img
+          src="./docs/pages/2.jpg"
+          alt="DAL/2442 page 2, Loss of Braking and Emer Descent"
+        />
+      </figure>
+      <figure>
+        <figcaption>Page 3 of 4 · Memory items</figcaption>
+        <img
+          src="./docs/pages/3.jpg"
+          alt="DAL/2442 page 3, Unreliable Airspeed and Stall at Liftoff"
+        />
+      </figure>
+      <figure>
+        <figcaption>Page 4 of 4 · Evacuation</figcaption>
+        <img
+          src="./docs/pages/4.jpg"
+          alt="DAL/2442 page 4, emergency evacuation flow"
+        />
+      </figure>
+    </div>
+  </body>
+</html>

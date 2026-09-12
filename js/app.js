@@ -1,6 +1,8 @@
 import { GROUPS, ITEMS, ITEM_BY_ID } from "./items.js";
 
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";
+
+const TRAINING_PDF_VIEW = "./pdf.html";
 
 const STORAGE = {
   username: "a350.username",
@@ -67,6 +69,15 @@ function idsForFilter(filter) {
 
 function groupLabel(id) {
   return GROUPS.find((group) => group.id === id)?.label ?? "All";
+}
+
+function practiceToolbar() {
+  return `
+    <div class="toolbar">
+      <a class="btn secondary compact" href="${TRAINING_PDF_VIEW}">View PDF</a>
+      <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
+    </div>
+  `;
 }
 
 function normalize(value) {
@@ -313,9 +324,7 @@ function renderPractice() {
       })
       .join("");
     body.innerHTML = `
-      <div class="toolbar">
-        <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
-      </div>
+      ${practiceToolbar()}
       <div class="card">
         <p class="kicker">Round complete</p>
         <h2>${missed === 0 ? "All values recalled" : `${correct} of ${items.length} correct`}</h2>
@@ -385,9 +394,7 @@ function renderPractice() {
 
   const flagged = flagEntry(current.id);
   body.innerHTML = `
-    <div class="toolbar">
-      <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
-    </div>
+    ${practiceToolbar()}
     <div class="card">
       <p class="kicker">${escapeHtml(current.section)} · ${state.index + 1} of ${items.length}</p>
       ${current.context ? `<p class="context">${escapeHtml(current.context)}</p>` : ""}
@@ -525,6 +532,12 @@ function renderYou() {
       <div class="stat"><b>${stats.correct}</b><span>Correct</span></div>
     </div>
     <p class="note">Lifetime stats are for ${escapeHtml(displayName())} on this device.</p>
+    <div class="card" style="margin-top:16px">
+      <p class="kicker">Training aid</p>
+      <h2>DAL/2442 PDF</h2>
+      <p class="note">The source memory-items pages for this trainer. Training use only.</p>
+      <a class="btn primary" href="${TRAINING_PDF_VIEW}" style="margin-top:16px">View PDF</a>
+    </div>
     <p class="note">Version ${escapeHtml(APP_VERSION)}</p>
     ${
       state.history.length
