@@ -1,4 +1,4 @@
-const CACHE = "a350-recall-v1.3.0";
+const CACHE = "a350-recall-v1.4.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const ASSETS = [
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
   "./icons/a350-corner.jpg",
+  "./icons/a350.jpg",
   "./pdf.html",
   "./docs/pages/1.jpg",
   "./docs/pages/2.jpg",

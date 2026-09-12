@@ -25,19 +25,19 @@
       <header class="topbar">
         <div class="brand">
           <strong>A350 Recall</strong>
-          <span id="app-version">Training use only · v1.3.0</span>
+          <span id="app-version">v1.4.0</span>
         </div>
-        <div class="topbar-end">
+        <div class="topbar-photo">
+          <img
+            class="a350-corner"
+            src="./icons/a350.jpg"
+            alt="Delta Airbus A350"
+            width="240"
+            height="88"
+          />
           <button class="user-chip" id="user-chip" data-tab="you" type="button">
             Guest
           </button>
-          <img
-            class="a350-corner"
-            src="./icons/a350-corner.jpg"
-            alt="Airbus A350"
-            width="112"
-            height="56"
-          />
         </div>
       </header>
 
@@ -47,6 +47,10 @@
           <div id="stats" class="stats"></div>
           <div id="progress" class="progress"></div>
           <div id="practice-body"></div>
+        </section>
+
+        <section class="page" data-page="summary">
+          <div id="summary-body"></div>
         </section>
 
         <section class="page" data-page="history">
@@ -66,6 +70,12 @@
             <path d="M5 6h14M5 12h10M5 18h7" />
           </svg>
           Practice
+        </button>
+        <button class="nav-btn" data-tab="summary" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M5 18V10M10 18V6M15 18v-7M20 18V8" />
+          </svg>
+          Summary
         </button>
         <button class="nav-btn" data-tab="history" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

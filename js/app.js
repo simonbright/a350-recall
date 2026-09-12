@@ -1,6 +1,6 @@
 import { GROUPS, ITEMS, ITEM_BY_ID } from "./items.js";
 
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 
 const TRAINING_PDF_VIEW = "./pdf.html";
 
@@ -9,7 +9,18 @@ const STORAGE = {
   onboarded: "a350.onboarded",
   history: "a350.history",
   session: "a350.session.v2",
+  mastery: "a350.mastery.v1",
 };
+
+const SUMMARY_SECTIONS = [
+  { id: "limitations", label: "FCOM Limitations", groups: ["limitations"] },
+  {
+    id: "memory",
+    label: "Memory Items",
+    groups: ["braking", "descent", "uas", "stall"],
+  },
+  { id: "evac", label: "Evacuation", groups: ["evac"] },
+];
 
 const state = {
   tab: "practice",
@@ -25,6 +36,7 @@ const state = {
   startedAt: "",
   expandedId: "",
   flags: {},
+  sessionId: "",
 };
 
 function readJson(key, fallback) {
@@ -71,11 +83,16 @@ function groupLabel(id) {
   return GROUPS.find((group) => group.id === id)?.label ?? "All";
 }
 
-function practiceToolbar() {
+function practiceToolbar(showDone = true) {
   return `
     <div class="toolbar">
-      <a class="btn secondary compact" href="${TRAINING_PDF_VIEW}">View PDF</a>
-      <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
+      <a class="tool-link" href="${TRAINING_PDF_VIEW}">PDF</a>
+      ${
+        showDone
+          ? `<button class="tool-link" data-action="done-now" type="button">Done for now</button>`
+          : `<span></span>`
+      }
+      <button class="tool-link reset" data-action="reset" type="button">Reset</button>
     </div>
   `;
 }
@@ -145,6 +162,7 @@ function persistSession() {
     lastGrade: state.lastGrade,
     startedAt: state.startedAt,
     flags: state.flags,
+    sessionId: state.sessionId,
   });
 }
 
@@ -171,6 +189,138 @@ function displayName() {
   return state.username.trim() || "Guest";
 }
 
+function newSessionId() {
+  return crypto.randomUUID();
+}
+
+function loadMastery() {
+  return readJson(STORAGE.mastery, {});
+}
+
+function saveMastery(all) {
+  writeJson(STORAGE.mastery, all);
+}
+
+function recordAttempt(itemId, grade) {
+  const all = loadMastery();
+  const user = displayName();
+  const byItem = all[user] ?? {};
+  const list = (byItem[itemId] ?? []).filter(
+    (attempt) => attempt.sessionId !== state.sessionId,
+  );
+  list.push({
+    grade,
+    at: new Date().toISOString(),
+    sessionId: state.sessionId,
+  });
+  byItem[itemId] = list;
+  all[user] = byItem;
+  saveMastery(all);
+}
+
+function dropSessionAttempts(sessionId) {
+  if (!sessionId) return;
+  const all = loadMastery();
+  const user = displayName();
+  const byItem = all[user];
+  if (!byItem) return;
+  for (const id of Object.keys(byItem)) {
+    byItem[id] = byItem[id].filter((attempt) => attempt.sessionId !== sessionId);
+    if (!byItem[id].length) delete byItem[id];
+  }
+  all[user] = byItem;
+  saveMastery(all);
+}
+
+function attemptsFromEntry(entry) {
+  if (entry.attempts?.length) return entry.attempts;
+  const missIds = new Set((entry.misses ?? []).map((item) => item.id));
+  const deckIds = idsForFilter(entry.deck || "all");
+  if (entry.total === deckIds.length) {
+    return deckIds.map((id) => ({
+      id,
+      grade: missIds.has(id) ? "missed" : "correct",
+    }));
+  }
+  return (entry.misses ?? []).map((item) => ({ id: item.id, grade: "missed" }));
+}
+
+function backfillMasteryFromHistory() {
+  const all = loadMastery();
+  let changed = false;
+  for (const entry of state.history) {
+    const user = entry.username || "Guest";
+    const byItem = all[user] ?? {};
+    const already = Object.values(byItem).some((list) =>
+      list.some((attempt) => attempt.sessionId === entry.id),
+    );
+    if (already) {
+      all[user] = byItem;
+      continue;
+    }
+    for (const attempt of attemptsFromEntry(entry)) {
+      if (!ITEM_BY_ID[attempt.id]) continue;
+      byItem[attempt.id] = [
+        ...(byItem[attempt.id] ?? []),
+        {
+          grade: attempt.grade,
+          at: entry.finishedAt,
+          sessionId: entry.id,
+        },
+      ];
+      changed = true;
+    }
+    all[user] = byItem;
+  }
+  if (changed) saveMastery(all);
+}
+
+function tallyAttempts(list) {
+  const attempts = list.length;
+  const correct = list.filter((attempt) => attempt.grade === "correct").length;
+  const recent = list.slice(-5);
+  const recentCorrect = recent.filter((attempt) => attempt.grade === "correct").length;
+  const recentAttempts = recent.length;
+  const recentPct = recentAttempts
+    ? Math.round((recentCorrect / recentAttempts) * 100)
+    : 0;
+  return {
+    attempts,
+    correct,
+    missed: attempts - correct,
+    pct: attempts ? Math.round((correct / attempts) * 100) : 0,
+    recentAttempts,
+    recentCorrect,
+    recentPct,
+    last: list.length ? list[list.length - 1].grade : "",
+  };
+}
+
+function strength(stat) {
+  if (!stat.attempts) return "none";
+  const pct = stat.recentAttempts ? stat.recentPct : stat.pct;
+  if (pct >= 80) return "good";
+  if (pct >= 50) return "ok";
+  return "weak";
+}
+
+function itemStatsForUser() {
+  const byItem = loadMastery()[displayName()] ?? {};
+  return Object.fromEntries(
+    ITEMS.map((item) => [item.id, tallyAttempts(byItem[item.id] ?? [])]),
+  );
+}
+
+function sectionStats(groups) {
+  const items = ITEMS.filter((item) => groups.includes(item.group));
+  const byItem = loadMastery()[displayName()] ?? {};
+  const combined = items.flatMap((item) => byItem[item.id] ?? []);
+  return {
+    items,
+    tally: tallyAttempts(combined),
+  };
+}
+
 function load() {
   state.username = localStorage.getItem(STORAGE.username) ?? "";
   state.history = readJson(STORAGE.history, []);
@@ -178,10 +328,15 @@ function load() {
   const valid =
     saved?.order?.length && saved.order.every((id) => ITEM_BY_ID[id]);
   if (valid) {
-    Object.assign(state, saved, { draft: "", flags: saved.flags ?? {} });
+    Object.assign(state, saved, {
+      draft: "",
+      flags: saved.flags ?? {},
+      sessionId: saved.sessionId || newSessionId(),
+    });
   } else {
     startRound("all", idsForFilter("all"), false);
   }
+  backfillMasteryFromHistory();
 }
 
 function startRound(filter, ids, resetStart = true) {
@@ -193,6 +348,7 @@ function startRound(filter, ids, resetStart = true) {
   state.lastGrade = "";
   state.draft = "";
   state.flags = {};
+  state.sessionId = newSessionId();
   if (resetStart || !state.startedAt) {
     state.startedAt = new Date().toISOString();
   }
@@ -206,7 +362,9 @@ function saveHistory(entry) {
 
 function finishRound() {
   const items = deck();
-  const misses = items
+  const attempted = items.filter((item) => state.results[item.id]);
+  if (!attempted.length) return false;
+  const misses = attempted
     .filter((item) => state.results[item.id] === "missed")
     .map((item) => ({
       id: item.id,
@@ -214,8 +372,8 @@ function finishRound() {
       context: item.context ?? "",
       answer: item.answer,
     }));
-  const correct = items.filter((item) => state.results[item.id] === "correct").length;
-  const flagged = flaggedItems(items).map((item) => ({
+  const correct = attempted.filter((item) => state.results[item.id] === "correct").length;
+  const flagged = flaggedItems(attempted).map((item) => ({
     id: item.id,
     prompt: item.prompt,
     answer: item.answer,
@@ -228,14 +386,20 @@ function finishRound() {
     deckLabel: groupLabel(state.filter),
     startedAt: state.startedAt,
     finishedAt: new Date().toISOString(),
-    total: items.length,
+    total: attempted.length,
     correct,
     missed: misses.length,
+    complete: attempted.length === items.length,
     misses,
     flagged,
+    attempts: attempted.map((item) => ({
+      id: item.id,
+      grade: state.results[item.id],
+    })),
   });
   state.phase = "done";
   persistSession();
+  return true;
 }
 
 function formatWhen(iso) {
@@ -259,8 +423,7 @@ function durationLabel(start, end) {
 
 function renderChrome() {
   document.getElementById("user-chip").textContent = displayName();
-  document.getElementById("app-version").textContent =
-    `Training use only · v${APP_VERSION}`;
+  document.getElementById("app-version").textContent = `v${APP_VERSION}`;
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === state.tab);
   });
@@ -324,7 +487,7 @@ function renderPractice() {
       })
       .join("");
     body.innerHTML = `
-      ${practiceToolbar()}
+      ${practiceToolbar(false)}
       <div class="card">
         <p class="kicker">Round complete</p>
         <h2>${missed === 0 ? "All values recalled" : `${correct} of ${items.length} correct`}</h2>
@@ -439,6 +602,69 @@ function lifetimeStats() {
   };
 }
 
+function renderSummary() {
+  const stats = itemStatsForUser();
+  const practiced = Object.values(stats).filter((stat) => stat.attempts).length;
+  const overall = tallyAttempts(
+    ITEMS.flatMap((item) => (loadMastery()[displayName()] ?? {})[item.id] ?? []),
+  );
+  const root = document.getElementById("summary-body");
+  root.innerHTML = `
+    <p class="kicker">For ${escapeHtml(displayName())}</p>
+    <h2 style="margin-bottom: 6px">Summary</h2>
+    <p class="note" style="margin-top:0">Updates after every check, including Done for now. Colors use your last 5 attempts.</p>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><b>${practiced}/${ITEMS.length}</b><span>Items practiced</span></div>
+      <div class="stat ${
+        strength(overall) === "good" ? "good" : strength(overall) === "ok" ? "warn" : strength(overall) === "weak" ? "bad" : ""
+      }"><b>${overall.attempts ? `${overall.pct}%` : "—"}</b><span>All-time</span></div>
+      <div class="stat"><b>${overall.attempts}</b><span>Attempts</span></div>
+    </div>
+    <div class="summary-legend">
+      <span><i class="good"></i> Strong ≥80%</span>
+      <span><i class="ok"></i> Mixed 50–79%</span>
+      <span><i class="weak"></i> Weak &lt;50%</span>
+      <span><i class="none"></i> Not yet</span>
+    </div>
+    ${SUMMARY_SECTIONS.map((section) => {
+      const { items, tally } = sectionStats(section.groups);
+      const band = strength(tally);
+      const rows = items
+        .map((item) => {
+          const stat = stats[item.id];
+          const itemBand = strength(stat);
+          const meta = stat.attempts
+            ? `${stat.attempts}× · ${stat.pct}%${
+                stat.recentAttempts && stat.recentAttempts < stat.attempts
+                  ? ` · recent ${stat.recentPct}%`
+                  : ""
+              }`
+            : "Not yet";
+          return `
+            <div class="summary-row ${itemBand}">
+              <span class="q">${escapeHtml(item.prompt)}</span>
+              <span class="summary-meta">${meta}</span>
+            </div>`;
+        })
+        .join("");
+      const sectionMeta = tally.attempts
+        ? `${tally.attempts}× · ${tally.pct}%`
+        : "Not yet";
+      return `
+        <section class="summary-section ${band}">
+          <header>
+            <div>
+              <h3>${escapeHtml(section.label)}</h3>
+              <p class="summary-meta">${sectionMeta}</p>
+            </div>
+            <button class="tool-link" data-filter="${section.id}" type="button">Practice</button>
+          </header>
+          ${rows}
+        </section>`;
+    }).join("")}
+  `;
+}
+
 function renderHistory() {
   const root = document.getElementById("history-body");
   if (!state.history.length) {
@@ -480,7 +706,9 @@ function renderHistory() {
                 <strong>${escapeHtml(entry.username)}</strong>
                 <span class="score">${entry.correct}/${entry.total}</span>
               </div>
-              <p class="meta">${escapeHtml(entry.deckLabel)} · ${formatWhen(entry.finishedAt)}${
+              <p class="meta">${escapeHtml(entry.deckLabel)}${
+                entry.complete === false ? " · stopped early" : ""
+              } · ${formatWhen(entry.finishedAt)}${
                 durationLabel(entry.startedAt, entry.finishedAt)
                   ? ` · ${durationLabel(entry.startedAt, entry.finishedAt)}`
                   : ""
@@ -550,6 +778,7 @@ function renderYou() {
 function render() {
   renderChrome();
   if (state.tab === "practice") renderPractice();
+  if (state.tab === "summary") renderSummary();
   if (state.tab === "history") renderHistory();
   if (state.tab === "you") renderYou();
 }
@@ -566,6 +795,7 @@ function submitAnswer(forceMiss) {
   state.results = { ...state.results, [current.id]: grade };
   state.lastGrade = grade;
   state.phase = "feedback";
+  recordAttempt(current.id, grade);
   persistSession();
   render();
 }
@@ -618,6 +848,7 @@ document.addEventListener("click", (event) => {
   if (filterBtn) {
     const filter = filterBtn.dataset.filter;
     startRound(filter, idsForFilter(filter));
+    state.tab = "practice";
     render();
     return;
   }
@@ -651,9 +882,19 @@ document.addEventListener("click", (event) => {
       (answered === 0 && !hasFlags) ||
       confirm("Reset this round? Answers, flags, and notes will be cleared.")
     ) {
+      if (state.phase !== "done") dropSessionAttempts(state.sessionId);
       startRound(state.filter, idsForFilter(state.filter));
       render();
     }
+  }
+  if (action === "done-now") {
+    const noteEl = document.getElementById("item-note");
+    const current = deck()[state.index];
+    if (current && noteEl) setFlag(current.id, { note: noteEl.value });
+    finishRound();
+    startRound(state.filter, idsForFilter(state.filter));
+    state.tab = "summary";
+    render();
   }
   if (action === "shuffle" || action === "new-round") {
     startRound(state.filter, idsForFilter(state.filter));
@@ -676,6 +917,7 @@ document.addEventListener("click", (event) => {
   if (action === "clear-history" && confirm("Clear all saved activity on this device?")) {
     state.history = [];
     writeJson(STORAGE.history, []);
+    localStorage.removeItem(STORAGE.mastery);
     render();
   }
 });
