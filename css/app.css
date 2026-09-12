@@ -18,7 +18,7 @@
   --nav: #ffffff;
   --radius: 14px;
   --tap: 48px;
-  --header-h: 56px;
+  --header-h: 44px;
   --nav-h: 64px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -70,42 +70,42 @@ button {
   left: 0;
   right: 0;
   z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   height: calc(var(--header-h) + var(--safe-top));
-  padding: var(--safe-top) 14px 0;
+  padding: var(--safe-top) 12px 0;
   background: rgba(238, 244, 250, 0.94);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
 }
 
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 720px;
+  height: var(--header-h);
+  margin: 0 auto;
+}
+
 .delta-icon {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .brand {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+  gap: 8px;
   min-width: 0;
 }
 
 .brand strong {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 650;
   letter-spacing: 0.01em;
 }
@@ -118,9 +118,9 @@ button {
 
 .user-chip {
   flex: 0 0 auto;
-  max-width: 40vw;
-  height: 32px;
-  padding: 0 12px;
+  max-width: 34vw;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--bg-chip);
@@ -136,7 +136,7 @@ button {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 16px 16px 28px;
+  padding: 10px 16px 28px;
 }
 
 .page.active {
@@ -342,8 +342,26 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   margin-bottom: 8px;
+}
+
+.format-row {
+  display: flex;
+  gap: 6px;
+}
+
+.format-row .chip {
+  height: 32px;
+  padding: 0 12px;
+}
+
+.toolbar-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .tool-link {
@@ -485,6 +503,71 @@ a.btn {
   color: var(--faint);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.cue {
+  min-height: min(48vh, 380px);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.cue-inner {
+  min-height: min(48vh, 380px);
+}
+
+.cue-face {
+  min-height: min(48vh, 380px);
+  padding: 18px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.cue-front {
+  display: flex;
+  flex-direction: column;
+}
+
+.cue.flipped .cue-front {
+  display: none;
+}
+
+.cue-back {
+  display: none;
+  flex-direction: column;
+  animation: cue-in 0.28s ease;
+}
+
+.cue.flipped .cue-back {
+  display: flex;
+}
+
+@keyframes cue-in {
+  from {
+    opacity: 0.4;
+    transform: rotateY(-70deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cue-hint {
+  margin-top: auto;
+  padding-top: 24px;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.cue-answer {
+  margin: 12px 0 16px;
+  line-height: 1.45;
+}
+
+.cue-back .row-actions {
+  margin-top: auto;
 }
 
 .banner {

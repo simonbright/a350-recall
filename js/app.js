@@ -1,6 +1,6 @@
 import { GROUPS, ITEMS, ITEM_BY_ID } from "./items.js";
 
-export const APP_VERSION = "1.4.1";
+export const APP_VERSION = "1.4.2";
 
 const TRAINING_PDF_VIEW = "./pdf.html";
 
@@ -10,6 +10,7 @@ const STORAGE = {
   history: "a350.history",
   session: "a350.session.v2",
   mastery: "a350.mastery.v1",
+  format: "a350.format",
 };
 
 const SUMMARY_SECTIONS = [
@@ -37,6 +38,7 @@ const state = {
   expandedId: "",
   flags: {},
   sessionId: "",
+  format: "type",
 };
 
 function readJson(key, fallback) {
@@ -86,13 +88,19 @@ function groupLabel(id) {
 function practiceToolbar(showDone = true) {
   return `
     <div class="toolbar">
-      <a class="tool-link" href="${TRAINING_PDF_VIEW}">PDF</a>
-      ${
-        showDone
-          ? `<button class="tool-link" data-action="done-now" type="button">Done for now</button>`
-          : `<span></span>`
-      }
-      <button class="tool-link reset" data-action="reset" type="button">Reset</button>
+      <div class="format-row">
+        <button class="chip ${state.format === "type" ? "active" : ""}" data-format="type" type="button">Type</button>
+        <button class="chip ${state.format === "cards" ? "active" : ""}" data-format="cards" type="button">Cue cards</button>
+      </div>
+      <div class="toolbar-links">
+        <a class="tool-link" href="${TRAINING_PDF_VIEW}">PDF</a>
+        ${
+          showDone
+            ? `<button class="tool-link" data-action="done-now" type="button">Done for now</button>`
+            : ""
+        }
+        <button class="tool-link reset" data-action="reset" type="button">Reset</button>
+      </div>
     </div>
   `;
 }
@@ -163,6 +171,7 @@ function persistSession() {
     startedAt: state.startedAt,
     flags: state.flags,
     sessionId: state.sessionId,
+    format: state.format,
   });
 }
 
@@ -323,6 +332,7 @@ function sectionStats(groups) {
 
 function load() {
   state.username = localStorage.getItem(STORAGE.username) ?? "";
+  state.format = localStorage.getItem(STORAGE.format) === "cards" ? "cards" : "type";
   state.history = readJson(STORAGE.history, []);
   const saved = readJson(STORAGE.session, null);
   const valid =
@@ -332,7 +342,9 @@ function load() {
       draft: "",
       flags: saved.flags ?? {},
       sessionId: saved.sessionId || newSessionId(),
+      format: saved.format === "cards" || saved.format === "type" ? saved.format : state.format,
     });
+    localStorage.setItem(STORAGE.format, state.format);
   } else {
     startRound("all", idsForFilter("all"), false);
   }
@@ -516,6 +528,11 @@ function renderPractice() {
     return;
   }
 
+  if (state.format === "cards") {
+    renderCueCard(current, items);
+    return;
+  }
+
   const sequence = current.kind === "sequence";
   const field =
     sequence
@@ -588,6 +605,94 @@ function renderPractice() {
 
   const input = document.getElementById("answer-input");
   if (input) input.focus({ preventScroll: true });
+}
+
+function renderCueCard(current, items) {
+  const flagged = flagEntry(current.id);
+  const flipped = state.phase === "feedback";
+  const body = document.getElementById("practice-body");
+  body.innerHTML = `
+    ${practiceToolbar()}
+    <div class="cue ${flipped ? "flipped" : ""}" data-cue>
+      <div class="cue-inner">
+        <div class="cue-face cue-front">
+          <p class="kicker">${escapeHtml(current.section)} · ${state.index + 1} of ${items.length}</p>
+          ${current.context ? `<p class="context">${escapeHtml(current.context)}</p>` : ""}
+          <div class="q-head">
+            <h2>${escapeHtml(current.prompt)}</h2>
+            <button
+              class="flag-btn ${flagged.flagged ? "active" : ""}"
+              type="button"
+              data-action="flag"
+              aria-pressed="${flagged.flagged ? "true" : "false"}"
+            >${flagged.flagged ? "Flagged" : "Flag"}</button>
+          </div>
+          <p class="ask">${escapeHtml(
+            current.ask ?? (current.kind === "sequence" ? "Say the steps in order" : "What is the value?"),
+          )}</p>
+          <p class="cue-hint">Double tap to flip</p>
+        </div>
+        <div class="cue-face cue-back">
+          <p class="kicker">Answer · ${state.index + 1} of ${items.length}</p>
+          <h2>${escapeHtml(current.prompt)}</h2>
+          <div class="cue-answer">${officialHtml(current)}</div>
+          <div class="row-actions">
+            <button class="btn primary" data-action="got-it" type="button">Got it</button>
+            <button class="btn secondary" data-action="missed-card" type="button">Missed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Self-score after you recall it. Training use only — DAL/2442.</p>
+  `;
+  bindCueFlip();
+}
+
+let lastCueTap = 0;
+let lastCueFlip = 0;
+
+function flipCueCard(event) {
+  if (event.target.closest("button, a, input, textarea, label")) return;
+  const now = Date.now();
+  if (now - lastCueFlip < 400) return;
+  lastCueFlip = now;
+  event.preventDefault();
+  state.phase = state.phase === "ask" ? "feedback" : "ask";
+  persistSession();
+  const cue = document.querySelector("[data-cue]");
+  if (cue) cue.classList.toggle("flipped", state.phase === "feedback");
+}
+
+function bindCueFlip() {
+  const cue = document.querySelector("[data-cue]");
+  if (!cue) return;
+  cue.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    flipCueCard(event);
+  });
+  cue.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "mouse") return;
+    if (event.target.closest("button, a, input, textarea, label")) return;
+    const now = Date.now();
+    if (now - lastCueTap < 320) {
+      lastCueTap = 0;
+      flipCueCard(event);
+    } else {
+      lastCueTap = now;
+    }
+  });
+}
+
+function gradeCard(grade) {
+  const current = deck()[state.index];
+  if (!current || state.results[current.id]) return;
+  const noteEl = document.getElementById("item-note");
+  if (noteEl) setFlag(current.id, { note: noteEl.value });
+  state.results = { ...state.results, [current.id]: grade };
+  state.lastGrade = grade;
+  recordAttempt(current.id, grade);
+  persistSession();
+  goNext();
 }
 
 function lifetimeStats() {
@@ -853,6 +958,20 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const formatBtn = event.target.closest("[data-format]");
+  if (formatBtn) {
+    state.format = formatBtn.dataset.format === "cards" ? "cards" : "type";
+    localStorage.setItem(STORAGE.format, state.format);
+    if (state.format === "cards" && state.lastGrade) {
+      state.phase = "feedback";
+    } else if (state.format === "type" && !state.lastGrade) {
+      state.phase = "ask";
+    }
+    persistSession();
+    render();
+    return;
+  }
+
   const expand = event.target.closest("[data-expand]");
   if (expand) {
     const id = expand.dataset.expand;
@@ -864,6 +983,8 @@ document.addEventListener("click", (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (!action) return;
 
+  if (action === "got-it") gradeCard("correct");
+  if (action === "missed-card") gradeCard("missed");
   if (action === "reveal") submitAnswer(true);
   if (action === "next") goNext();
   if (action === "flag") {

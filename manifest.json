@@ -7,7 +7,7 @@
   "display": "standalone",
   "background_color": "#eef4fa",
   "theme_color": "#eef4fa",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "icons": [
     {
       "src": "./icons/icon-192.png",
