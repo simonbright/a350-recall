@@ -1,5 +1,7 @@
 import { GROUPS, ITEMS, ITEM_BY_ID } from "./items.js";
 
+export const APP_VERSION = "1.2.0";
+
 const STORAGE = {
   username: "a350.username",
   onboarded: "a350.onboarded",
@@ -246,6 +248,8 @@ function durationLabel(start, end) {
 
 function renderChrome() {
   document.getElementById("user-chip").textContent = displayName();
+  document.getElementById("app-version").textContent =
+    `Training use only · v${APP_VERSION}`;
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === state.tab);
   });
@@ -521,6 +525,7 @@ function renderYou() {
       <div class="stat"><b>${stats.correct}</b><span>Correct</span></div>
     </div>
     <p class="note">Lifetime stats are for ${escapeHtml(displayName())} on this device.</p>
+    <p class="note">Version ${escapeHtml(APP_VERSION)}</p>
     ${
       state.history.length
         ? `<button class="btn danger" data-action="clear-history" style="margin-top:16px;width:100%">Clear activity history</button>`

@@ -1,4 +1,4 @@
-const CACHE = "a350-recall-v3";
+const CACHE = "a350-recall-v1.2.0";
 const ASSETS = [
   "./",
   "./index.html",
