@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#eef4fa" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="A350 Recall" />
+    <meta
+      name="description"
+      content="A350 memory-item recall trainer for phone and iPad. Training use only."
+    />
+    <title>A350 Recall</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./icons/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="./css/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <strong>A350 Recall</strong>
+          <span>Training use only</span>
+        </div>
+        <div class="topbar-end">
+          <button class="user-chip" id="user-chip" data-tab="you" type="button">
+            Guest
+          </button>
+          <img
+            class="a350-corner"
+            src="./icons/a350-corner.jpg"
+            alt="Airbus A350"
+            width="112"
+            height="56"
+          />
+        </div>
+      </header>
+
+      <main>
+        <section class="page active" data-page="practice">
+          <div id="chips" class="chips"></div>
+          <div id="stats" class="stats"></div>
+          <div id="progress" class="progress"></div>
+          <div id="practice-body"></div>
+        </section>
+
+        <section class="page" data-page="history">
+          <p class="kicker">Activity</p>
+          <h2 style="margin-bottom: 14px">History</h2>
+          <div id="history-body"></div>
+        </section>
+
+        <section class="page" data-page="you">
+          <div id="you-body"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn active" data-tab="practice" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M5 6h14M5 12h10M5 18h7" />
+          </svg>
+          Practice
+        </button>
+        <button class="nav-btn" data-tab="history" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="8" />
+            <path d="M12 8v5l3 2" />
+          </svg>
+          History
+        </button>
+        <button class="nav-btn" data-tab="you" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="9" r="3.2" />
+            <path d="M6.5 18.5c1.4-2.4 3.3-3.5 5.5-3.5s4.1 1.1 5.5 3.5" />
+          </svg>
+          You
+        </button>
+      </nav>
+    </div>
+
+    <div class="sheet" id="onboard" hidden>
+      <div class="sheet-card">
+        <h2>Name this device</h2>
+        <p>
+          Optional. Saved locally so activity history is tagged. No account or
+          login.
+        </p>
+        <form id="onboard-form">
+          <label class="field">
+            <span>Username</span>
+            <input
+              id="onboard-name"
+              type="text"
+              maxlength="40"
+              autocapitalize="words"
+              autocomplete="username"
+              placeholder="e.g. Simon"
+            />
+          </label>
+          <div class="actions">
+            <button class="btn primary" type="submit">Save and continue</button>
+            <button class="btn ghost" type="button" data-action="skip-onboard">
+              Skip for now
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
