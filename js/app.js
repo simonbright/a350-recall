@@ -20,6 +20,7 @@ const state = {
   draft: "",
   startedAt: "",
   expandedId: "",
+  flags: {},
 };
 
 function readJson(key, fallback) {
@@ -130,6 +131,26 @@ function persistSession() {
     phase: state.phase,
     lastGrade: state.lastGrade,
     startedAt: state.startedAt,
+    flags: state.flags,
+  });
+}
+
+function flagEntry(id) {
+  return state.flags[id] ?? { flagged: false, note: "" };
+}
+
+function setFlag(id, patch) {
+  state.flags = {
+    ...state.flags,
+    [id]: { ...flagEntry(id), ...patch },
+  };
+  persistSession();
+}
+
+function flaggedItems(items) {
+  return items.filter((item) => {
+    const entry = flagEntry(item.id);
+    return entry.flagged || entry.note.trim();
   });
 }
 
@@ -144,7 +165,7 @@ function load() {
   const valid =
     saved?.order?.length && saved.order.every((id) => ITEM_BY_ID[id]);
   if (valid) {
-    Object.assign(state, saved, { draft: "" });
+    Object.assign(state, saved, { draft: "", flags: saved.flags ?? {} });
   } else {
     startRound("all", idsForFilter("all"), false);
   }
@@ -158,6 +179,7 @@ function startRound(filter, ids, resetStart = true) {
   state.phase = "ask";
   state.lastGrade = "";
   state.draft = "";
+  state.flags = {};
   if (resetStart || !state.startedAt) {
     state.startedAt = new Date().toISOString();
   }
@@ -180,6 +202,12 @@ function finishRound() {
       answer: item.answer,
     }));
   const correct = items.filter((item) => state.results[item.id] === "correct").length;
+  const flagged = flaggedItems(items).map((item) => ({
+    id: item.id,
+    prompt: item.prompt,
+    answer: item.answer,
+    note: flagEntry(item.id).note.trim(),
+  }));
   saveHistory({
     id: crypto.randomUUID(),
     username: displayName(),
@@ -191,6 +219,7 @@ function finishRound() {
     correct,
     missed: misses.length,
     misses,
+    flagged,
   });
   state.phase = "done";
   persistSession();
@@ -268,7 +297,21 @@ function renderPractice() {
           </p>`,
       )
       .join("");
+    const flaggedRows = flaggedItems(items)
+      .map((item) => {
+        const note = flagEntry(item.id).note.trim();
+        return `
+          <p>
+            <span class="q">${escapeHtml(item.prompt)}</span><br />
+            <span class="a">${escapeHtml(item.answer)}</span>
+            ${note ? `<br /><span class="flag-note">${escapeHtml(note)}</span>` : ""}
+          </p>`;
+      })
+      .join("");
     body.innerHTML = `
+      <div class="toolbar">
+        <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
+      </div>
       <div class="card">
         <p class="kicker">Round complete</p>
         <h2>${missed === 0 ? "All values recalled" : `${correct} of ${items.length} correct`}</h2>
@@ -276,6 +319,11 @@ function renderPractice() {
         ${
           missed
             ? `<div class="miss-list">${missRows}</div>`
+            : ""
+        }
+        ${
+          flaggedRows
+            ? `<div class="flagged-list"><h3>Flagged items</h3>${flaggedRows}</div>`
             : ""
         }
         <div class="actions" style="margin-top:16px">
@@ -309,7 +357,6 @@ function renderPractice() {
             <button class="btn primary" type="submit">Check</button>
             <button class="btn secondary" type="button" data-action="reveal">Reveal</button>
           </div>
-          <button class="btn ghost" type="button" data-action="shuffle">Shuffle again</button>
         </form>`
       : `
         <button class="btn primary" data-action="next">${
@@ -332,15 +379,31 @@ function renderPractice() {
         }
       `;
 
+  const flagged = flagEntry(current.id);
   body.innerHTML = `
+    <div class="toolbar">
+      <button class="btn secondary compact" data-action="reset" type="button">Reset</button>
+    </div>
     <div class="card">
       <p class="kicker">${escapeHtml(current.section)} · ${state.index + 1} of ${items.length}</p>
       ${current.context ? `<p class="context">${escapeHtml(current.context)}</p>` : ""}
-      <h2>${escapeHtml(current.prompt)}</h2>
+      <div class="q-head">
+        <h2>${escapeHtml(current.prompt)}</h2>
+        <button
+          class="flag-btn ${flagged.flagged ? "active" : ""}"
+          type="button"
+          data-action="flag"
+          aria-pressed="${flagged.flagged ? "true" : "false"}"
+        >${flagged.flagged ? "Flagged" : "Flag"}</button>
+      </div>
       <p class="ask">${escapeHtml(
         current.ask ?? (sequence ? "Say the steps in order" : "What is the value?"),
       )}</p>
       ${askHtml}
+      <label class="field note-field">
+        <span>Note (optional)</span>
+        <input id="item-note" type="text" maxlength="200" autocomplete="off" placeholder="Add a note" value="${escapeHtml(flagged.note)}" />
+      </label>
     </div>
     <p class="note">${
       sequence
@@ -386,6 +449,20 @@ function renderHistory() {
                 </p>`,
             )
             .join("");
+          const flaggedHtml = (entry.flagged ?? [])
+            .map(
+              (item) => `
+                <p>
+                  <span class="q">${escapeHtml(item.prompt)}</span><br />
+                  <span class="a">${escapeHtml(item.answer)}</span>
+                  ${
+                    item.note
+                      ? `<br /><span class="flag-note">${escapeHtml(item.note)}</span>`
+                      : ""
+                  }
+                </p>`,
+            )
+            .join("");
           return `
             <button class="session" data-expand="${entry.id}">
               <div class="session-top">
@@ -396,6 +473,10 @@ function renderHistory() {
                 durationLabel(entry.startedAt, entry.finishedAt)
                   ? ` · ${durationLabel(entry.startedAt, entry.finishedAt)}`
                   : ""
+              }${
+                (entry.flagged ?? []).length
+                  ? ` · ${entry.flagged.length} flagged`
+                  : ""
               }</p>
               ${
                 open
@@ -403,6 +484,10 @@ function renderHistory() {
                       entry.misses.length
                         ? missHtml
                         : "<p class='a'>No misses this round.</p>"
+                    }${
+                      flaggedHtml
+                        ? `<h3>Flagged items</h3>${flaggedHtml}`
+                        : ""
                     }</div>`
                   : ""
               }
@@ -457,6 +542,8 @@ function submitAnswer(forceMiss) {
   if (!current || state.phase !== "ask") return;
   const input = document.getElementById("answer-input");
   if (input) state.draft = input.value;
+  const noteEl = document.getElementById("item-note");
+  if (noteEl) setFlag(current.id, { note: noteEl.value });
   const grade = !forceMiss && isCorrect(state.draft, current) ? "correct" : "missed";
   state.results = { ...state.results, [current.id]: grade };
   state.lastGrade = grade;
@@ -467,6 +554,9 @@ function submitAnswer(forceMiss) {
 
 function goNext() {
   const items = deck();
+  const current = items[state.index];
+  const noteEl = document.getElementById("item-note");
+  if (current && noteEl) setFlag(current.id, { note: noteEl.value });
   if (state.index + 1 >= items.length) {
     finishRound();
     render();
@@ -527,6 +617,26 @@ document.addEventListener("click", (event) => {
 
   if (action === "reveal") submitAnswer(true);
   if (action === "next") goNext();
+  if (action === "flag") {
+    const current = deck()[state.index];
+    if (!current) return;
+    const noteEl = document.getElementById("item-note");
+    if (noteEl) setFlag(current.id, { note: noteEl.value });
+    setFlag(current.id, { flagged: !flagEntry(current.id).flagged });
+    render();
+  }
+  if (action === "reset") {
+    const items = deck();
+    const answered = items.filter((item) => state.results[item.id]).length;
+    const hasFlags = flaggedItems(items).length > 0;
+    if (
+      (answered === 0 && !hasFlags) ||
+      confirm("Reset this round? Answers, flags, and notes will be cleared.")
+    ) {
+      startRound(state.filter, idsForFilter(state.filter));
+      render();
+    }
+  }
   if (action === "shuffle" || action === "new-round") {
     startRound(state.filter, idsForFilter(state.filter));
     render();
@@ -555,6 +665,10 @@ document.addEventListener("click", (event) => {
 document.addEventListener("input", (event) => {
   if (event.target.id === "answer-input") {
     state.draft = event.target.value;
+  }
+  if (event.target.id === "item-note") {
+    const current = deck()[state.index];
+    if (current) setFlag(current.id, { note: event.target.value });
   }
 });
 

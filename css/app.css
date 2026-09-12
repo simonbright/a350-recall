@@ -332,6 +332,12 @@ textarea {
   gap: 10px;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .btn {
   width: 100%;
   min-height: var(--tap);
@@ -340,6 +346,71 @@ textarea {
   border-radius: 12px;
   font-size: 16px;
   font-weight: 650;
+}
+
+.btn.compact {
+  width: auto;
+  min-width: 88px;
+}
+
+.q-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.q-head h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+.flag-btn {
+  flex: 0 0 auto;
+  height: 36px;
+  min-height: 36px;
+  width: auto;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-chip);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.flag-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.note-field {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.note-field input {
+  min-height: 40px;
+}
+
+.flagged-list {
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.flagged-list h3,
+.miss-list h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.flag-note {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 13px;
 }
 
 .btn.primary {
